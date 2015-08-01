@@ -19,13 +19,30 @@ exports.load = function(req, res, next, quizId) {
 
 };
 
-
-// GET /quizes
+// GET /quizes/:search
 exports.index = function(req, res) {
-	models.Quiz.findAll().then(function(quizes) {
-		res.render('quizes/index', {quizes: quizes});
+	var buscar = req.query.search || '';
 
-	});
+	// No nos pasan nigun filtro
+	if (buscar === '') {
+		models.Quiz.findAll().then(function(quizes) {
+			res.render('quizes/index', {quizes: quizes});
+
+		});
+
+	} else {
+		// Reemplazamos los espacions por %
+		// De esta forma, si busca "uno dos" ("%uno%dos%"),
+		// mostrará todas las preguntas que tengan "uno" seguido de "dos",
+		// independientemente de lo que haya entre "uno" y "dos".
+		buscar = buscar.replace(/ /g, '%');
+
+		models.Quiz.findAll({where: ["pregunta like ?", '%' + buscar + '%'], order: 'pregunta'}).then(function(quizes) {
+			res.render('quizes/index', {quizes: quizes});
+
+		});		
+
+	}
 
 };
 
@@ -52,6 +69,31 @@ exports.answer = function(req, res) {
 	});
 	
 };
+
+
+// GET /quizes/new
+exports.new = function(req, res) {
+	var quiz = models.Quiz.build( // crea objeto quiz
+		{pregunta: 'Pregunta', respuesta: 'Respuesta'}
+	);
+
+	res.render('quizes/new', {quiz: quiz});
+
+};
+
+
+// POST /quizes/create
+exports.create = function(req, res) {
+	var quiz = models.Quiz.build( req.body.quiz );
+
+	// guarda en DB los campos pregunta y respuesta de quiz
+	quiz.save({fields: ["pregunta", "respuesta"]}).
+		then( function() { res.redirect('/quizes'); }); // Redirección HTTP (URL relativo) lista de preguntas
+
+};
+
+
+
 
 exports.author = function(req, res) {
 	res.render('author', {});
